@@ -6,6 +6,7 @@ import (
 
 	ldap "github.com/go-ldap/ldap/v3"
 	"github.com/openshift/user-authorization-builder/sresshd"
+	"k8s.io/apimachinery/pkg/runtime"
 	// //"k8s.io/apimachinery/pkg/api/errors"
 	// "k8s.io/client-go/kubernetes"
 	// "k8s.io/client-go/tools/clientcmd"
@@ -17,6 +18,8 @@ const (
 )
 
 func main() {
+	//Will hold the k8s resources to be put inside the SelectorSyncSet
+	RawResource := make([]runtime.RawExtension, 0)
 
 	//Create a connection to LDAP
 	ldapConn, err := ldap.Dial("tcp", fmt.Sprintf("%s:%s", ldapHost, ldapPort))
@@ -39,7 +42,7 @@ func main() {
 	}
 
 	//Build authorized_keys file
-	success, err := sresshd.BuildAuthorizedKeysFile(UserPubKeys, ".", "srep")
+	success, err := sresshd.BuildAuthorizedKeysFile(UserPubKeys, ".")
 	if err != nil {
 		log.Fatal("Error: ", err)
 	}
@@ -48,12 +51,12 @@ func main() {
 	}
 
 	//Create a K8S configMap
-	confMapData, err := sresshd.BuildConfigMapData("srep")
-
-	configMap := sresshd.CreateConfigMap("sshd-srep-keys-config", "TODO", nil, confMapData)
-
-	fmt.Println(configMap)
+	confMapData, err := sresshd.BuildConfigMapData()
+	configMap := sresshd.CreateConfigMap("sshd-srep-keys-config", "TODO", nil, nil, confMapData)
 
 	//Create SSS
+	RawResource = append(RawResource, runtime.RawExtension{Object: configMap})
+	sss := sresshd.CreateSelectorSyncSet(RawResource)
 
+	fmt.Println(sss)
 }

@@ -7,10 +7,12 @@ import (
 	"os"
 
 	ldap "github.com/go-ldap/ldap/v3"
+	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	corev1 "k8s.io/api/core/v1"
 
 	// //"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	// "k8s.io/client-go/kubernetes"
 	// "k8s.io/client-go/tools/clientcmd"
 )
@@ -88,10 +90,10 @@ func GetSREUsersPubKey(connection *ldap.Conn, users []string) (map[string]string
 }
 
 //BuildAuthorizedKeysFile creates an authorized_keys file for an organization (i.e rhmi, app-sre, srep, etc).
-func BuildAuthorizedKeysFile(userKeys map[string]string, path, org string) (bool, error) {
+func BuildAuthorizedKeysFile(userKeys map[string]string, path string) (bool, error) {
 
-	//Create authorize_keys file
-	file, err := os.OpenFile(fmt.Sprintf("%s/%s_authorized_keys", path, org), os.O_CREATE|os.O_WRONLY, 0644)
+	//Create authorized_keys file
+	file, err := os.OpenFile(fmt.Sprintf("%s/authorized_keys", path), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return false, err
 	}
@@ -112,7 +114,7 @@ func BuildAuthorizedKeysFile(userKeys map[string]string, path, org string) (bool
 }
 
 //CreateConfigMap will create a k8s configmap and return it
-func CreateConfigMap(name, namespace string, annotations, data map[string]string) *corev1.ConfigMap {
+func CreateConfigMap(name, namespace string, annotations, labels, data map[string]string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -120,6 +122,7 @@ func CreateConfigMap(name, namespace string, annotations, data map[string]string
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: annotations,
+			Labels:      labels,
 			Name:        name,
 			Namespace:   namespace,
 		},
@@ -128,11 +131,11 @@ func CreateConfigMap(name, namespace string, annotations, data map[string]string
 }
 
 //BuildConfigMapData builds the data to be put on the configMap from the authorized keys file
-func BuildConfigMapData(org string) (map[string]string, error) {
+func BuildConfigMapData() (map[string]string, error) {
 
 	configMapData := make(map[string]string)
 
-	authFile := fmt.Sprintf("%s_authorized_keys", org)
+	authFile := "authorized_keys"
 	//Open the authorize_keys file for reading
 	file, err := os.OpenFile(authFile, os.O_RDWR, 0644)
 	if err != nil {
@@ -152,4 +155,33 @@ func BuildConfigMapData(org string) (map[string]string, error) {
 	}
 
 	return configMapData, nil
+}
+
+//CreateSelectorSyncSet builds the hive SelectorSyncSet
+func CreateSelectorSyncSet(resources []runtime.RawExtension) *hivev1.SelectorSyncSet {
+	return &hivev1.SelectorSyncSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "SelectorSyncSet",
+			APIVersion: "hive.openshift.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "managed-cluster-validating-webhooks",
+			Labels: map[string]string{
+				"managed.openshift.io/gitHash":     "${IMAGE_TAG}",
+				"managed.openshift.io/gitRepoName": "${REPO_NAME}",
+				"managed.openshift.io/osd":         "true",
+			},
+		},
+		Spec: hivev1.SelectorSyncSetSpec{
+			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
+				ResourceApplyMode: hivev1.SyncResourceApplyMode,
+				Resources:         resources,
+			},
+			ClusterDeploymentSelector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"api.openshift.com/managed": "true",
+				},
+			},
+		},
+	}
 }
