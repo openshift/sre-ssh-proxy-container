@@ -55,10 +55,9 @@ func GetSREUsersPubKey(connection *ldap.Conn, users []string) (map[string]string
 
 	userKeys := map[string]string{}
 	userKey := ""
-	//Create LDAP search request
 
 	for _, user := range users {
-
+		//Create LDAP search request
 		searchRequest := ldap.NewSearchRequest(
 			"dc=redhat,dc=com", // The base dn to search
 			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
