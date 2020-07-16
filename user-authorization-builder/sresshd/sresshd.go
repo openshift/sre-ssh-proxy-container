@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"os"
 
+	"gopkg.in/yaml.v2"
+
 	ldap "github.com/go-ldap/ldap/v3"
 	hivev1 "github.com/openshift/hive/pkg/apis/hive/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	// //"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	// "k8s.io/client-go/kubernetes"
-	// "k8s.io/client-go/tools/clientcmd"
 )
 
 //GetSREUsersList will search LDAP for all memberUids of users
@@ -158,19 +157,15 @@ func BuildConfigMapData() (map[string]string, error) {
 }
 
 //CreateSelectorSyncSet builds the hive SelectorSyncSet
-func CreateSelectorSyncSet(resources []runtime.RawExtension) *hivev1.SelectorSyncSet {
+func CreateSelectorSyncSet(resources []runtime.RawExtension, labels, matchLabels map[string]string) *hivev1.SelectorSyncSet {
 	return &hivev1.SelectorSyncSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "SelectorSyncSet",
 			APIVersion: "hive.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "managed-cluster-validating-webhooks",
-			Labels: map[string]string{
-				"managed.openshift.io/gitHash":     "${IMAGE_TAG}",
-				"managed.openshift.io/gitRepoName": "${REPO_NAME}",
-				"managed.openshift.io/osd":         "true",
-			},
+			Name:   "sre-sshd-authorization-keys-sync",
+			Labels: labels,
 		},
 		Spec: hivev1.SelectorSyncSetSpec{
 			SyncSetCommonSpec: hivev1.SyncSetCommonSpec{
@@ -178,10 +173,36 @@ func CreateSelectorSyncSet(resources []runtime.RawExtension) *hivev1.SelectorSyn
 				Resources:         resources,
 			},
 			ClusterDeploymentSelector: metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"api.openshift.com/managed": "true",
-				},
+				MatchLabels: matchLabels,
 			},
 		},
 	}
+}
+
+//WriteSSSYaml writes a SSS into a yaml file
+func WriteSSSYaml(sss *hivev1.SelectorSyncSet) error {
+	//Create <sss_name>.yaml file
+	file, err := os.OpenFile(fmt.Sprintf("deploy/%s.yaml", sss.GetName()), os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	//Close file
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+
+	out, err := yaml.Marshal(sss)
+	if err != nil {
+		return err
+	}
+
+	//Write every key entry in a new line
+	for _, line := range out {
+		_, _ = writer.WriteString(string(line))
+	}
+
+	writer.Flush()
+
+	return nil
 }

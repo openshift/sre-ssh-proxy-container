@@ -6,6 +6,7 @@ require (
 	github.com/go-ldap/ldap/v3 v3.2.2
 	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/openshift/hive v1.0.5
+	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.18.5
 	k8s.io/apimachinery v0.18.5
 )
