@@ -45,12 +45,12 @@ LogLevel DEBUG
 
 # The default is to check both .ssh/authorized_keys and .ssh/authorized_keys2
 # but this is overridden so installations will only check .ssh/authorized_keys
-AuthorizedKeysFile	.ssh/authorized_keys
+AuthorizedKeysFile none
 
 #AuthorizedPrincipalsFile none
 
-#AuthorizedKeysCommand none
-#AuthorizedKeysCommandUser nobody
+AuthorizedKeysCommand /etc/ssh/list-authorized-keys
+AuthorizedKeysCommandUser sre-user
 
 # For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
 #HostbasedAuthentication no
@@ -63,7 +63,7 @@ AuthorizedKeysFile	.ssh/authorized_keys
 # To disable tunneled clear text passwords, change to no here!
 #PasswordAuthentication yes
 #PermitEmptyPasswords no
-PasswordAuthentication yes
+PasswordAuthentication no
 
 # Change to no to disable s/key passwords
 #ChallengeResponseAuthentication yes

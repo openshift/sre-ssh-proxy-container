@@ -23,10 +23,6 @@ chmod 700 /home/sre-user/.ssh
 cp /opt/ssh_files/bashrc /home/sre-user/.bashrc
 cp /opt/ssh_files/bash_profile /home/sre-user/.bash_profile
 
-# setup authorized_keys file
-cp /opt/ssh_files/authorized_keys /home/sre-user/.ssh/authorized_keys
-chmod 600 /home/sre-user/.ssh/authorized_keys
-
 # setup SSHD
 mkdir /opt/sshd
 cp /opt/ssh_files/sshd_config /opt/sshd

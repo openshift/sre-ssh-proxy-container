@@ -15,6 +15,9 @@ RUN yum install -y vim-enhanced initscripts openssh-server openssh-clients
 ADD pam_sshd /etc/pam.d/sshd
 RUN chmod 644 /etc/pam.d/sshd && chown root.root /etc/pam.d/sshd
 
+ADD list-authorized-keys /etc/ssh/list-authorized-keys
+RUN chmod 755 /etc/ssh/list-authorized-keys
+
 RUN useradd sre-user && \
     sed -i '/sre-user/d' /etc/passwd
 RUN rm -rf /home/sre-user
@@ -30,10 +33,9 @@ RUN chgrp -R 0 /opt && \
 
 RUN mkdir /opt/ssh_files && chmod 775 /opt/ssh_files
 ADD sshd_config /opt/ssh_files
-ADD authorized_keys /opt/ssh_files
 ADD bashrc /opt/ssh_files
 ADD bash_profile /opt/ssh_files
-RUN chmod 664 /opt/ssh_files/sshd_config /opt/ssh_files/authorized_keys
+RUN chmod 664 /opt/ssh_files/sshd_config
 
 ADD start-sshd.sh /opt
 ADD sshd-keygen /opt
