@@ -16,29 +16,39 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+//LdapSearchExecuter executes a LDAP search and returns the result
+func LdapSearchExecuter(connection *ldap.Conn, baseDn, filter string, searchAttrs []string) (*ldap.SearchResult, error) {
+	searchRequest := ldap.NewSearchRequest(
+		baseDn, // The base dn to search
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		filter,      // The filter to apply
+		searchAttrs, // A list attributes to retrieve (memberUid)
+		nil,
+	)
+
+	return connection.Search(searchRequest)
+
+}
+
 //GetSREUsersList will search LDAP for all memberUids of users
 //identified by the groupFilter. Returns a list of users
 func GetSREUsersList(connection *ldap.Conn, groupFilter string) ([]string, error) {
 
-	var sreMemberList []string
-
-	//Create LDAP search request
-	searchRequest := ldap.NewSearchRequest(
-		"ou=groups,dc=redhat,dc=com", // The base dn to search
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		fmt.Sprintf("(&(cn=%s))", groupFilter), // The filter to apply
-		[]string{"memberUid"},                  // A list attributes to retrieve (memberUid)
-		nil,
+	var (
+		sreMemberList []string
+		baseDn        = "ou=groups,dc=redhat,dc=com"
+		srFilter      = fmt.Sprintf("(&(cn=%s))", groupFilter)
+		srAttr        = []string{"memberUid"}
 	)
 
-	//Execute LDAP search
-	sr, err := connection.Search(searchRequest)
+	//Execute an Ldap search for users
+	srResult, err := LdapSearchExecuter(connection, baseDn, srFilter, srAttr)
 	if err != nil {
 		return nil, err
 	}
 
 	//Parse LDAP search Entries
-	for _, entry := range sr.Entries {
+	for _, entry := range srResult.Entries {
 		sreMemberList = entry.GetAttributeValues("memberUid")
 	}
 
@@ -53,30 +63,29 @@ func GetSREUsersList(connection *ldap.Conn, groupFilter string) ([]string, error
 //GetSREUsersPubKey will search LDAP for public keys of a list of users.
 func GetSREUsersPubKey(connection *ldap.Conn, users []string) (map[string]string, error) {
 
-	userKeys := map[string]string{}
-	userKey := ""
+	var (
+		userKeys = map[string]string{}
+		userKey  = ""
+		baseDn   = "dc=redhat,dc=com"
+		srAttr   = []string{"ipaSshPubKey"}
+		srFilter = ""
+	)
 
 	for _, user := range users {
-		//Create LDAP search request
-		searchRequest := ldap.NewSearchRequest(
-			"dc=redhat,dc=com", // The base dn to search
-			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			fmt.Sprintf("((uid=%s))", user), // The filter to apply
-			[]string{"ipaSshPubKey"},        // A list attributes to retrieve
-			nil,
-		)
 
-		//Execute LDAP search request
-		sr, err := connection.Search(searchRequest)
+		//Rebuild a filter per user
+		srFilter = fmt.Sprintf("((uid=%s))", user)
+
+		//Execute an Ldap Search
+		srResult, err := LdapSearchExecuter(connection, baseDn, srFilter, srAttr)
 		if err != nil {
 			return nil, err
 		}
 
 		//Parse the search request entries
-		for _, entry := range sr.Entries {
+		for _, entry := range srResult.Entries {
 			userKey = entry.GetAttributeValue("ipaSshPubKey")
 		}
-
 		//if the key is defined for the user, add it to the map
 		if userKey != "" {
 			userKeys[user] = userKey
