@@ -13,7 +13,7 @@ trap "handle_signal" SIGINT SIGTERM SIGHUP
 USER_ID="$(id -u)"
 GROUP_ID="$(id -g)"
 #false at the end for non interactive user
-echo "sre-user::${USER_ID}:${GROUP_ID}:SRE USER:/home/sre-user:false" >> /etc/passwd
+echo "sre-user::${USER_ID}:${GROUP_ID}:SRE USER:/home/sre-user:/bin/false" >> /etc/passwd
 
 # setup sre-user home dir
 mkdir /home/sre-user
