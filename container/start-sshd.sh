@@ -13,7 +13,7 @@ trap "handle_signal" SIGINT SIGTERM SIGHUP
 USER_ID="$(id -u)"
 GROUP_ID="$(id -g)"
 #false at the end for non interactive user
-echo "sre-user::${USER_ID}:${GROUP_ID}:SRE USER:/home/sre-user:false" >> /etc/passwd
+echo "sre-user::${USER_ID}:${GROUP_ID}:SRE USER:/home/sre-user:/bin/false" >> /etc/passwd
 
 # setup sre-user home dir
 mkdir /home/sre-user
@@ -22,10 +22,6 @@ chmod 700 /home/sre-user
 chmod 700 /home/sre-user/.ssh
 cp /opt/ssh_files/bashrc /home/sre-user/.bashrc
 cp /opt/ssh_files/bash_profile /home/sre-user/.bash_profile
-
-# setup authorized_keys file
-cp /opt/ssh_files/authorized_keys /home/sre-user/.ssh/authorized_keys
-chmod 600 /home/sre-user/.ssh/authorized_keys
 
 # setup SSHD
 mkdir /opt/sshd

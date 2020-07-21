@@ -8,4 +8,4 @@ include standard.mk
 
 .PHONY: local
 local:
-	$(CONTAINER_ENGINE) run --rm --publish 2222:2222 --interactive --tty $(IMAGE_URI_LATEST) bash
+	$(CONTAINER_ENGINE) run --rm --publish 2222:2222 --interactive --tty --volume $(HOME)/.ssh/authorized_keys:/var/run/authorized_keys.d/authorized_keys --name sre-sshd $(IMAGE_URI_LATEST)
