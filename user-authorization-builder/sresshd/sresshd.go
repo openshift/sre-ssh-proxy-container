@@ -16,79 +16,92 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-//GetSREUsersList will search LDAP for all memberUids of users
-//identified by the groupFilter. Returns a list of users
-func GetSREUsersList(connection *ldap.Conn, groupFilter string) ([]string, error) {
+//SreUser describes an SRE information
+type SreUser struct {
+	ID     string
+	PubKey string
+}
 
-	var sreMemberList []string
-
-	//Create LDAP search request
+//LdapSearchExecuter executes a LDAP search and returns the result
+func LdapSearchExecuter(connection *ldap.Conn, baseDn, filter string, searchAttrs []string) (*ldap.SearchResult, error) {
 	searchRequest := ldap.NewSearchRequest(
-		"ou=groups,dc=redhat,dc=com", // The base dn to search
+		baseDn, // The base dn to search
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		fmt.Sprintf("(&(cn=%s))", groupFilter), // The filter to apply
-		[]string{"memberUid"},                  // A list attributes to retrieve (memberUid)
+		filter,      // The filter to apply
+		searchAttrs, // A list attributes to retrieve (memberUid)
 		nil,
 	)
 
-	//Execute LDAP search
-	sr, err := connection.Search(searchRequest)
+	return connection.Search(searchRequest)
+
+}
+
+//GetSREUsersList will search LDAP for all memberUids on a group
+func GetSREUsersList(connection *ldap.Conn, groupFilter string) ([]SreUser, error) {
+
+	userList := []SreUser{}
+	ldapUsers := []string{}
+
+	baseDn := "ou=groups,dc=redhat,dc=com"
+	srFilter := fmt.Sprintf("(&(cn=%s))", groupFilter)
+	srAttr := []string{"memberUid"}
+
+	//Execute an Ldap search for users
+	srResult, err := LdapSearchExecuter(connection, baseDn, srFilter, srAttr)
 	if err != nil {
 		return nil, err
 	}
 
 	//Parse LDAP search Entries
-	for _, entry := range sr.Entries {
-		sreMemberList = entry.GetAttributeValues("memberUid")
+	for _, entry := range srResult.Entries {
+		ldapUsers = entry.GetAttributeValues("memberUid")
 	}
 
-	//Check the sereMemberList is not empty
-	if len(sreMemberList) == 0 && cap(sreMemberList) == 0 {
+	//for Every ID in ldapUsers create a sre member and append it to the list
+	sre := SreUser{}
+	for _, id := range ldapUsers {
+		sre.ID = id
+		userList = append(userList, sre)
+	}
+
+	//Check the userList is not empty
+	if len(userList) == 0 {
 		return nil, errors.New("LDAP search returned empty")
 	}
 
-	return sreMemberList, nil
+	return userList, nil
 }
 
-//GetSREUsersPubKey will search LDAP for public keys of a list of users.
-func GetSREUsersPubKey(connection *ldap.Conn, users []string) (map[string]string, error) {
+//GetSREUsersPubKeys will search LDAP for public keys of a list of users.
+func GetSREUsersPubKeys(connection *ldap.Conn, sreUsersList []SreUser) error {
 
-	userKeys := map[string]string{}
-	userKey := ""
+	baseDn := "dc=redhat,dc=com"
+	srAttr := []string{"ipaSshPubKey"}
+	srFilter := ""
 
-	for _, user := range users {
-		//Create LDAP search request
-		searchRequest := ldap.NewSearchRequest(
-			"dc=redhat,dc=com", // The base dn to search
-			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			fmt.Sprintf("((uid=%s))", user), // The filter to apply
-			[]string{"ipaSshPubKey"},        // A list attributes to retrieve
-			nil,
-		)
+	for idx, sreUser := range sreUsersList {
 
-		//Execute LDAP search request
-		sr, err := connection.Search(searchRequest)
+		//Rebuild a filter per user
+		srFilter = fmt.Sprintf("((uid=%s))", sreUser.ID)
+
+		//Execute an Ldap Search
+		srResult, err := LdapSearchExecuter(connection, baseDn, srFilter, srAttr)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		//Parse the search request entries
-		for _, entry := range sr.Entries {
-			userKey = entry.GetAttributeValue("ipaSshPubKey")
-		}
-
-		//if the key is defined for the user, add it to the map
-		if userKey != "" {
-			userKeys[user] = userKey
+		for _, entry := range srResult.Entries {
+			sreUsersList[idx].PubKey = entry.GetAttributeValue("ipaSshPubKey")
 		}
 
 	}
 
-	return userKeys, nil
+	return nil
 }
 
-//BuildAuthorizedKeysFile creates an authorized_keys file for an organization (i.e rhmi, app-sre, srep, etc).
-func BuildAuthorizedKeysFile(userKeys map[string]string, path string) (bool, error) {
+//BuildAuthorizedKeysFile creates an authorized_keys file
+func BuildAuthorizedKeysFile(sreUser []SreUser, path string) (bool, error) {
 
 	//Create authorized_keys file
 	file, err := os.OpenFile(fmt.Sprintf("%s/authorized_keys", path), os.O_CREATE|os.O_WRONLY, 0644)
@@ -102,8 +115,10 @@ func BuildAuthorizedKeysFile(userKeys map[string]string, path string) (bool, err
 	writer := bufio.NewWriter(file)
 
 	//Write every key entry in a new line
-	for _, key := range userKeys {
-		_, _ = writer.WriteString(key + "\n\n")
+	for _, user := range sreUser {
+		if len(user.PubKey) > 0 {
+			_, _ = writer.WriteString(user.PubKey + "\n\n")
+		}
 	}
 	writer.Flush()
 
@@ -128,7 +143,7 @@ func CreateConfigMap(name, namespace string, annotations, labels, data map[strin
 	}
 }
 
-//BuildConfigMapData builds the data to be put on the configMap from the authorized keys file
+//BuildConfigMapData builds the data to be put on the configMap from the authorized_keys file
 func BuildConfigMapData() (map[string]string, error) {
 
 	configMapData := make(map[string]string)
