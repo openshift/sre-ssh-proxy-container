@@ -8,21 +8,16 @@ endif
 ifndef IMAGE_NAME
 $(error IMAGE_NAME is not set; check project.mk file)
 endif
-ifndef VERSION_MAJOR
-$(error VERSION_MAJOR is not set; check project.mk file)
-endif
-ifndef VERSION_MINOR
-$(error VERSION_MINOR is not set; check project.mk file)
-endif
 
 # Generate version and tag information from inputs
-COMMIT_NUMBER=$(shell git rev-list `git rev-list --parents HEAD | egrep "^[a-f0-9]{40}$$"`..HEAD --count)
 CURRENT_COMMIT=$(shell git rev-parse --short=7 HEAD)
-IMAGE_VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(COMMIT_NUMBER)-$(CURRENT_COMMIT)
+INITIAL_COMMIT=$(shell git rev-list --max-parents=0 HEAD)
+COMMIT_NUMBER=$(shell git rev-list $(INITIAL_COMMIT)..HEAD --count)
+IMAGE_VERSION=$(COMMIT_NUMBER)-$(CURRENT_COMMIT)
 
-FULL_IMAGE_NAME=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)
-IMAGE_URI=$(FULL_IMAGE_NAME):v$(IMAGE_VERSION)
-IMAGE_URI_LATEST=$(FULL_IMAGE_NAME):latest
+IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)
+IMAGE_URI_VERSION=$(IMAGE_URI):v$(IMAGE_VERSION)
+IMAGE_URI_LATEST=$(IMAGE_URI):latest
 
 CONTAINER_ENGINE=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
@@ -34,10 +29,21 @@ isclean:
 
 .PHONY: build
 build: isclean
-	$(CONTAINER_ENGINE) build container --tag $(IMAGE_URI)
-	$(CONTAINER_ENGINE) tag $(IMAGE_URI) $(IMAGE_URI_LATEST)
+	$(CONTAINER_ENGINE) build container --tag $(IMAGE_URI_VERSION)
+	$(CONTAINER_ENGINE) tag $(IMAGE_URI_VERSION) $(IMAGE_URI_LATEST)
 
 .PHONY: push
 push:
-	$(CONTAINER_ENGINE) push $(IMAGE_URI)
+	$(CONTAINER_ENGINE) push $(IMAGE_URI_VERSION)
 	$(CONTAINER_ENGINE) push $(IMAGE_URI_LATEST)
+
+.PHONY: skopeo-push
+skopeo-push: build
+	skopeo copy \
+		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
+		"docker-daemon:${IMAGE_URI_VERSION}" \
+		"docker://${IMAGE_URI_VERSION}"
+	skopeo copy \
+		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
+		"docker-daemon:${IMAGE_URI_LATEST}" \
+		"docker://${IMAGE_URI_LATEST}"
