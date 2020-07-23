@@ -26,20 +26,19 @@ func main() {
 	defer ldapConn.Close()
 
 	//Get list of users
-	//TODO: "aos-sre" param should not be hardcoded. to accept other teams as filter
 	users, err := sresshd.GetSREUsersList(ldapConn, "aos-sre")
 	if err != nil {
 		log.Fatal("Error: ", err)
 	}
 
 	//Get key for every user in the users list
-	UserPubKeys, err := sresshd.GetSREUsersPubKey(ldapConn, users)
+	err = sresshd.GetSREUsersPubKeys(ldapConn, users)
 	if err != nil {
 		log.Fatal("Error: ", err)
 	}
 
 	//Build authorized_keys file
-	success, err := sresshd.BuildAuthorizedKeysFile(UserPubKeys, ".")
+	success, err := sresshd.BuildAuthorizedKeysFile(users, ".")
 	if err != nil {
 		log.Fatal("Error: ", err)
 	}
