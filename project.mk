@@ -1,6 +1,3 @@
 IMAGE_REGISTRY?=quay.io
 IMAGE_REPOSITORY?=openshift-sre
-IMAGE_NAME?=ssh
-
-VERSION_MAJOR?=0
-VERSION_MINOR?=1
+IMAGE_NAME?=sre-ssh-proxy
