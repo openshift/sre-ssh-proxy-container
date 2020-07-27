@@ -9,30 +9,40 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const (
-	ldapHost = "ldap.corp.redhat.com"
-	ldapPort = "389"
-)
-
 func main() {
-	//Will hold the k8s resources to be put inside the SelectorSyncSet
+	//RawResource will hold the k8s resources to be put inside the SelectorSyncSet
 	RawResource := make([]runtime.RawExtension, 0)
 
 	//Create a connection to LDAP
-	ldapConn, err := ldap.Dial("tcp", fmt.Sprintf("%s:%s", ldapHost, ldapPort))
+	lcln := &sresshd.LdapCLient{
+		BaseDn:       "ou=groups,dc=redhat,dc=com",
+		SearchFilter: "(&(cn=aos-sre))",
+		SearchAttrs:  []string{"memberUid"},
+		Host:         "ldap.corp.redhat.com",
+		Port:         "389",
+		Protocol:     "tcp",
+	}
+
+	var err error
+
+	lcln.ClnConn, err = ldap.Dial(lcln.Protocol, fmt.Sprintf("%s:%s", lcln.Host, lcln.Port))
 	if err != nil {
 		log.Fatal("Error: ", err)
 	}
-	defer ldapConn.Close()
+	defer lcln.ClnConn.Close()
 
 	//Get list of users
-	users, err := sresshd.GetSREUsersList(ldapConn, "aos-sre")
+	users, err := lcln.GetSREUsersList()
 	if err != nil {
 		log.Fatal("Error: ", err)
 	}
 
+	//change baseDN and filters for key searching
+	lcln.BaseDn = "dc=redhat,dc=com"
+	lcln.SearchAttrs = []string{"ipaSshPubKey"}
+
 	//Get key for every user in the users list
-	err = sresshd.GetSREUsersPubKeys(ldapConn, users)
+	err = lcln.GetSREUsersPubKeys(users)
 	if err != nil {
 		log.Fatal("Error: ", err)
 	}

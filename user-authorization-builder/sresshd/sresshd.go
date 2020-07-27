@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 
@@ -22,39 +23,45 @@ type SreUser struct {
 	PubKey string
 }
 
-//LdapSearchExecuter executes a LDAP search and returns the result
-func LdapSearchExecuter(connection *ldap.Conn, baseDn, filter string, searchAttrs []string) (*ldap.SearchResult, error) {
+//LdapCLient describes all the information needed to query ldap
+type LdapCLient struct {
+	ClnConn      *ldap.Conn
+	Protocol     string
+	Host         string
+	Port         string
+	BaseDn       string
+	SearchFilter string
+	SearchAttrs  []string
+}
+
+//ldapSearchExecuter executes a LDAP search and returns the result
+func (l *LdapCLient) ldapSearchExecuter() (*ldap.SearchResult, error) {
 	searchRequest := ldap.NewSearchRequest(
-		baseDn, // The base dn to search
+		l.BaseDn, // The base dn to search
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		filter,      // The filter to apply
-		searchAttrs, // A list attributes to retrieve (memberUid)
+		l.SearchFilter, // The filter to apply
+		l.SearchAttrs,  // A list attributes to retrieve
 		nil,
 	)
 
-	return connection.Search(searchRequest)
-
+	return l.ClnConn.Search(searchRequest)
 }
 
 //GetSREUsersList will search LDAP for all memberUids on a group
-func GetSREUsersList(connection *ldap.Conn, groupFilter string) ([]SreUser, error) {
+func (l *LdapCLient) GetSREUsersList() ([]SreUser, error) {
 
 	userList := []SreUser{}
 	ldapUsers := []string{}
 
-	baseDn := "ou=groups,dc=redhat,dc=com"
-	srFilter := fmt.Sprintf("(&(cn=%s))", groupFilter)
-	srAttr := []string{"memberUid"}
-
 	//Execute an Ldap search for users
-	srResult, err := LdapSearchExecuter(connection, baseDn, srFilter, srAttr)
+	srResult, err := l.ldapSearchExecuter()
 	if err != nil {
 		return nil, err
 	}
 
 	//Parse LDAP search Entries
 	for _, entry := range srResult.Entries {
-		ldapUsers = entry.GetAttributeValues("memberUid")
+		ldapUsers = entry.GetAttributeValues(strings.Join(l.SearchAttrs, ","))
 	}
 
 	//for Every ID in ldapUsers create a sre member and append it to the list
@@ -73,26 +80,22 @@ func GetSREUsersList(connection *ldap.Conn, groupFilter string) ([]SreUser, erro
 }
 
 //GetSREUsersPubKeys will search LDAP for public keys of a list of users.
-func GetSREUsersPubKeys(connection *ldap.Conn, sreUsersList []SreUser) error {
-
-	baseDn := "dc=redhat,dc=com"
-	srAttr := []string{"ipaSshPubKey"}
-	srFilter := ""
+func (l *LdapCLient) GetSREUsersPubKeys(sreUsersList []SreUser) error {
 
 	for idx, sreUser := range sreUsersList {
 
 		//Rebuild a filter per user
-		srFilter = fmt.Sprintf("((uid=%s))", sreUser.ID)
+		l.SearchFilter = fmt.Sprintf("((uid=%s))", sreUser.ID)
 
 		//Execute an Ldap Search
-		srResult, err := LdapSearchExecuter(connection, baseDn, srFilter, srAttr)
+		srResult, err := l.ldapSearchExecuter()
 		if err != nil {
 			return err
 		}
 
 		//Parse the search request entries
 		for _, entry := range srResult.Entries {
-			sreUsersList[idx].PubKey = entry.GetAttributeValue("ipaSshPubKey")
+			sreUsersList[idx].PubKey = entry.GetAttributeValue(strings.Join(l.SearchAttrs, ","))
 		}
 
 	}
