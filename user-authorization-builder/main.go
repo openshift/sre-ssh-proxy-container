@@ -21,10 +21,6 @@ func main() {
 		log.Fatal("Err: No group filters have been identified.")
 	}
 
-	//TODO: for every group in group filter { execute entire script to produce a SSS per group}
-	//TODO: Modifs. (Each authorized keys files will have to have a suffix with the group name)
-	//or we will need to build the ConfigMap Data directy from the map and not from the auth_keys files.
-
 	//RawResource will hold the k8s resources to be put inside the SelectorSyncSet
 	for _, group := range groupFilters {
 
