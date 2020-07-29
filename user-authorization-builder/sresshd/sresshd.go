@@ -73,7 +73,8 @@ func (l *LdapCLient) GetSREUsersList() ([]SreUser, error) {
 
 	//Check the userList is not empty
 	if len(userList) == 0 {
-		return nil, errors.New("LDAP search returned empty")
+		s := fmt.Sprintf("LDAP Search returned no users for group: %s", l.SearchFilter)
+		return nil, errors.New(s)
 	}
 
 	return userList, nil
@@ -104,10 +105,10 @@ func (l *LdapCLient) GetSREUsersPubKeys(sreUsersList []SreUser) error {
 }
 
 //BuildAuthorizedKeysFile creates an authorized_keys file
-func BuildAuthorizedKeysFile(sreUser []SreUser, path string) (bool, error) {
+func BuildAuthorizedKeysFile(sreUser []SreUser, group, path string) (bool, error) {
 
 	//Create authorized_keys file
-	file, err := os.OpenFile(fmt.Sprintf("%s/authorized_keys", path), os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(fmt.Sprintf("%s/authorized_keys_%s", path, group), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return false, err
 	}
@@ -130,7 +131,7 @@ func BuildAuthorizedKeysFile(sreUser []SreUser, path string) (bool, error) {
 }
 
 //CreateConfigMap will create a k8s configmap and return it
-func CreateConfigMap(name, namespace string, annotations, labels, data map[string]string) *corev1.ConfigMap {
+func CreateConfigMap(name, group, namespace string, annotations, labels, data map[string]string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -139,7 +140,7 @@ func CreateConfigMap(name, namespace string, annotations, labels, data map[strin
 		ObjectMeta: metav1.ObjectMeta{
 			Annotations: annotations,
 			Labels:      labels,
-			Name:        name,
+			Name:        fmt.Sprintf("%s_%s", name, group),
 			Namespace:   namespace,
 		},
 		Data: data,
@@ -147,11 +148,11 @@ func CreateConfigMap(name, namespace string, annotations, labels, data map[strin
 }
 
 //BuildConfigMapData builds the data to be put on the configMap from the authorized_keys file
-func BuildConfigMapData() (map[string]string, error) {
+func BuildConfigMapData(path, group string) (map[string]string, error) {
 
 	configMapData := make(map[string]string)
 
-	authFile := "authorized_keys"
+	authFile := fmt.Sprintf("%s/authorized_keys_%s", path, group)
 	//Open the authorize_keys file for reading
 	file, err := os.OpenFile(authFile, os.O_RDWR, 0644)
 	if err != nil {
@@ -174,14 +175,14 @@ func BuildConfigMapData() (map[string]string, error) {
 }
 
 //CreateSelectorSyncSet builds the hive SelectorSyncSet
-func CreateSelectorSyncSet(resources []runtime.RawExtension, labels, matchLabels map[string]string) *hivev1.SelectorSyncSet {
+func CreateSelectorSyncSet(resources []runtime.RawExtension, group string, labels, matchLabels map[string]string) *hivev1.SelectorSyncSet {
 	return &hivev1.SelectorSyncSet{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "SelectorSyncSet",
 			APIVersion: "hive.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "sre-sshd-authorization-keys-sync",
+			Name:   fmt.Sprintf("sre-sshd-authorization-keys-sync_%v", group),
 			Labels: labels,
 		},
 		Spec: hivev1.SelectorSyncSetSpec{
