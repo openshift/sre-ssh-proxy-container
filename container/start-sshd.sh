@@ -12,8 +12,8 @@ trap "handle_signal" SIGINT SIGTERM SIGHUP
 # add sre-user to /etc/passwd
 USER_ID="$(id -u)"
 GROUP_ID="$(id -g)"
-#false at the end for non interactive user
-echo "sre-user::${USER_ID}:${GROUP_ID}:SRE USER:/home/sre-user:/bin/false" >> /etc/passwd
+# sleepysh is non-interactive but never exits
+echo "sre-user::${USER_ID}:${GROUP_ID}:SRE USER:/home/sre-user:/bin/sleepysh" >> /etc/passwd
 
 # setup sre-user home dir
 mkdir /home/sre-user

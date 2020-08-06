@@ -18,6 +18,9 @@ RUN chmod 644 /etc/pam.d/sshd && chown root.root /etc/pam.d/sshd
 ADD list-authorized-keys /etc/ssh/list-authorized-keys
 RUN chmod 755 /etc/ssh/list-authorized-keys
 
+ADD sleepysh /bin/sleepysh
+RUN chmod 755 /bin/sleepysh
+
 RUN useradd sre-user && \
     sed -i '/sre-user/d' /etc/passwd
 RUN rm -rf /home/sre-user
