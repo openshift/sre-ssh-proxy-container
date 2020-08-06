@@ -1,0 +1,3 @@
+#!/bin/sh
+echo Connected. Press Ctrl-C to exit.
+sleep infinity
