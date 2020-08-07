@@ -110,8 +110,8 @@ X11Forwarding yes
 #UsePrivilegeSeparation sandbox
 #PermitUserEnvironment no
 #Compression delayed
-#ClientAliveInterval 0
-#ClientAliveCountMax 3
+ClientAliveInterval 5m
+ClientAliveCountMax 3
 #ShowPatchLevel no
 #UseDNS yes
 PidFile /tmp/sshd.pid
