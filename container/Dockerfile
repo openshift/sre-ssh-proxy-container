@@ -1,7 +1,7 @@
 FROM centos:centos8
 
 # install needed packages
-RUN yum install -y openssh-server
+RUN yum install -y openssh-server python3
 
 # add pam configs
 COPY --chown=root:root pam_sshd /etc/pam.d/sshd
