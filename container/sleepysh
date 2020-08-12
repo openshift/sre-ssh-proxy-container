@@ -1,3 +1,11 @@
 #!/bin/sh
+
+# handle the case of sshuttle
+if [[ "$@" == *"sys.stdin.read"* ]]; then
+    shift
+    sh -c "$@"
+fi
+
+# otherwise provide dumb interactive shell
 echo Connected. Press Ctrl-C to exit.
 sleep infinity
