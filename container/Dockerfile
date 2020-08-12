@@ -1,26 +1,18 @@
 FROM centos:centos8
 
-# creature comforts
-ENV LANG en_US.UTF-8
-ENV CONTAINER docker 
-ENV USER sre-user
-ENV HOME /home/sre-user
-ENV TERM xterm
-#WORKDIR /root
-ADD bashrc /root/.bashrc
+# install needed packages
+RUN yum install -y openssh-server python3
 
+# add pam configs
+COPY --chown=root:root pam_sshd /etc/pam.d/sshd
 
-RUN yum install -y vim-enhanced initscripts openssh-server openssh-clients
+# add authorized keys script
+COPY list-authorized-keys /etc/ssh/
 
-ADD pam_sshd /etc/pam.d/sshd
-RUN chmod 644 /etc/pam.d/sshd && chown root.root /etc/pam.d/sshd
+# add sleepysh shell
+COPY sleepysh /bin/
 
-ADD list-authorized-keys /etc/ssh/list-authorized-keys
-RUN chmod 755 /etc/ssh/list-authorized-keys
-
-ADD sleepysh /bin/sleepysh
-RUN chmod 755 /bin/sleepysh
-
+# add sre-user
 RUN useradd sre-user && \
     sed -i '/sre-user/d' /etc/passwd
 RUN rm -rf /home/sre-user
@@ -31,17 +23,11 @@ RUN chgrp -R 0 /opt && \
     chmod  g+rwX /home && \
     chmod  g+rwX /opt
 
-#RUN chgrp -R 1000 /opt && \
-#    chmod 775 /opt
+# copy sshd config
+COPY sshd_config /opt/ssh_files/
 
-RUN mkdir /opt/ssh_files && chmod 775 /opt/ssh_files
-ADD sshd_config /opt/ssh_files
-ADD bashrc /opt/ssh_files
-ADD bash_profile /opt/ssh_files
-RUN chmod 664 /opt/ssh_files/sshd_config
-
-ADD start-sshd.sh /opt
-ADD sshd-keygen /opt
+# copy ssh server scripts
+COPY start-sshd.sh sshd-keygen /opt/
 
 USER 1000
 WORKDIR  /opt

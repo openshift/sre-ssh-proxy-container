@@ -20,8 +20,6 @@ mkdir /home/sre-user
 mkdir /home/sre-user/.ssh
 chmod 700 /home/sre-user
 chmod 700 /home/sre-user/.ssh
-cp /opt/ssh_files/bashrc /home/sre-user/.bashrc
-cp /opt/ssh_files/bash_profile /home/sre-user/.bash_profile
 
 # setup SSHD
 mkdir /opt/sshd
