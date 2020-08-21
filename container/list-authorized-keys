@@ -4,5 +4,5 @@ DIR=/var/run/authorized_keys.d
 
 if [ -d "$DIR" ]
 then
-  find $DIR -type f -print0 | xargs -0 cat | sort | uniq
+  find $DIR -type f | xargs cat | sort | uniq
 fi
