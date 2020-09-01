@@ -26,8 +26,8 @@ RUN chgrp -R 0 /opt && \
 # copy sshd config
 COPY sshd_config /opt/ssh_files/
 
-# copy ssh server scripts
-COPY start-sshd.sh sshd-keygen /opt/
+# copy startup script
+COPY start-sshd.sh /opt/
 
 USER 1000
 WORKDIR  /opt

@@ -26,9 +26,6 @@ mkdir /opt/sshd
 cp /opt/ssh_files/sshd_config /opt/sshd
 chmod 700 /opt/sshd
 chmod 600 /opt/sshd/sshd_config
-echo "generating sshd keys..."
-/opt/sshd-keygen
-
 
 echo "starting sshd"
 /usr/sbin/sshd -f /opt/sshd/sshd_config -D -e
