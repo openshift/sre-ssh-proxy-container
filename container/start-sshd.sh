@@ -8,6 +8,17 @@ function handle_signal {
 
 trap "handle_signal" SIGINT SIGTERM SIGHUP
 
+# Collect host key files from the environment for sshd_config.
+# Assume environment variables are named like "SSH_HOST_*_KEY".
+HOST_KEYS=$'\n'
+for host_key in $(printenv | sed 's/=.*$//' | grep -e 'SSH_HOST_\w\+_KEY')
+do
+  if [[ -e "${!host_key}" ]]
+  then
+    HOST_KEYS+="HostKey ${!host_key}"
+    HOST_KEYS+=$'\n'
+  fi
+done
 
 # add sre-user to /etc/passwd
 USER_ID="$(id -u)"
@@ -45,11 +56,7 @@ Port 2222
 #AddressFamily any
 #ListenAddress 0.0.0.0
 #ListenAddress ::
-
-HostKey /opt/sshd/ssh_host_rsa_key
-#HostKey /etc/ssh/ssh_host_dsa_key
-HostKey /opt/sshd/ssh_host_ecdsa_key
-HostKey /opt/sshd/ssh_host_ed25519_key
+${HOST_KEYS}
 
 # Ciphers and keying
 #RekeyLimit default none
