@@ -83,7 +83,7 @@ AuthorizedKeysFile none
 
 #AuthorizedPrincipalsFile none
 
-AuthorizedKeysCommand /etc/ssh/list-authorized-keys
+AuthorizedKeysCommand /etc/ssh/list-authorized-keys ${AUTHORIZED_KEYS_DIR}
 AuthorizedKeysCommandUser sre-user
 
 # For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
@@ -174,6 +174,17 @@ Subsystem	sftp	/usr/libexec/openssh/sftp-server
 #	ForceCommand cvs server
 EOF
 chmod 600 /opt/sshd/sshd_config
+
+# Validate AUTHORIZED_KEYS_DIR
+if [[ -z "$AUTHORIZED_KEYS_DIR" ]]
+then
+  echo "Fatal: Environment variable AUTHORIZED_KEYS_DIR is not set." >/dev/stderr
+  exit 1
+elif [[ ! -d "$AUTHORIZED_KEYS_DIR" ]]
+then
+  echo "Fatal: AUTHORIZED_KEYS_DIR="$AUTHORIZED_KEYS_DIR" is invalid." >/dev/stderr
+  exit 1
+fi
 
 echo "starting sshd"
 /usr/sbin/sshd -f /opt/sshd/sshd_config -D -e
