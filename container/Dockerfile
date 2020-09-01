@@ -23,9 +23,6 @@ RUN chgrp -R 0 /opt && \
     chmod  g+rwX /home && \
     chmod  g+rwX /opt
 
-# copy sshd config
-COPY sshd_config /opt/ssh_files/
-
 # copy startup script
 COPY start-sshd.sh /opt/
 
