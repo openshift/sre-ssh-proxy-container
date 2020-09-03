@@ -1,5 +1,5 @@
 # sre-ssh-proxy-container
-This is a container that runs a _non-interactive_, unprivileged [OpenSSH](https://www.openssh.com/) daemon; primarily intended for tunneling over SSH to reach a [Kubernetes](https://kubernetes.io/) or [OpenShift](https://www.openshift.com/) cluster's [API server](https://kubernetes.io/docs/concepts/overview/kubernetes-api/).
+This is a container that runs a _non-interactive_, unprivileged [OpenSSH](https://www.openssh.com/) daemon; primarily intended for tunneling over SSH to reach a [Kubernetes](https://kubernetes.io/) or [OpenShift](https://www.openshift.com/) cluster's [API server](https://kubernetes.io/docs/concepts/overview/kubernetes-api/) in a context where the API server is not directly accessible.
 
 The client can either [establish a SOCKS proxy with ssh](https://man.openbsd.org/ssh#D) and use the proxy to forward `kubectl` or `oc` commands by way of an `HTTPS_PROXY` environment variable, or directly configure the client host's route tables with a tool like [sshuttle](https://sshuttle.readthedocs.io/).
 
