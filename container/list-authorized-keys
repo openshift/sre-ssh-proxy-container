@@ -1,8 +1,6 @@
 #!/bin/bash
 
-DIR=/var/run/authorized_keys.d
-
-if [ -d "$DIR" ]
+if [ -d "$1" ]
 then
-  find $DIR -type f | xargs cat | sort | uniq
+  find $1 -type f | xargs cat | sort | uniq
 fi
