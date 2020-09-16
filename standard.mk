@@ -29,6 +29,8 @@ isclean:
 
 .PHONY: build
 build: isclean
+	pwd
+	ls -lR
 	$(CONTAINER_ENGINE) build container --tag $(IMAGE_URI_VERSION)
 	$(CONTAINER_ENGINE) tag $(IMAGE_URI_VERSION) $(IMAGE_URI_LATEST)
 
