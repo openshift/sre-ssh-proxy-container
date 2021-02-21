@@ -34,5 +34,33 @@ Note that multiple authorized keys files are allowed, even in subdirectories of 
 
 All files under `AUTHORIZED_KEYS_DIR` must adhere to the [authorized_keys file format](https://man.openbsd.org/sshd.8#AUTHORIZED_KEYS_FILE_FORMAT).
 
+#### KEY SIGNING
+
+The `signkey` command is used to generate a certificate for an authorized key signed by the cluster's csr-signer certificate, intended to be used for client auth when other authentication methods are unavailable.
+
+When a user runs `signkey`, their corresponding authorized key is extracted from the `SSH_USER_AUTH` environment variable and compared against a list of `authorized_keys` files to determine group membership.
+
+If a matching group is found, a certificate is generated with the authorized key fingerprint and group membership included in the DN.
+
+By default, a new private key is generated and included in the output along with the certificate, which can be used for auth like so:
+
+```
+ssh sre-user@$HOST signkey > tls.pem
+oc config set-credentials sre-user --client-certificate=tls.pem --client-key=tls.pem
+```
+To avoid generating a private key server-side, the user should send an optional `SIGN_KEY` environment variable (`ssh -o SendEnv=SIGN_KEY`) containing a base64 raw-encoded public key PEM block. An example script is included demonstrating this process.
+
+To prevent unauthorized certificate generation via `oc exec` or similar, an agent must be forwarded for either of the above options to work. Agent-less authentication is only possible if `SIGN_KEY` matches the authorized key.
+
+#### ELEVATION
+
+Group membership cannot be changed when using x509 auth, so to temporarily elevate SRE must patch the osd-sre-cluster-admins clusterrolebinding instead:
+
+```
+oc patch clusterrolebindings/osd-sre-cluster-admins --type='json' \
+  -p='[{"op":"add","path":"/subjects/-","value":{"apiGroup":"rbac.authorization.k8s.io","kind":"User","name":"'$(oc whoami)'"}}]'
+```
+
+This requires you already have `bind` and `escalate` privileges on clusterroles.
 
 <sup><a name="footnote1">1</a> **TODO:** Consider making the port number and user name configurable through additional environment variables.</sup>

@@ -1,4 +1,13 @@
-FROM centos:centos8
+# build signkey separately
+FROM quay.io/bitnami/golang:1.15
+
+COPY signkey.go go.mod go.sum /go/src/
+
+WORKDIR /go/src/
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o signkey -ldflags "-extldflags -static -s -w"
+
+FROM registry.centos.org/centos:centos8
 
 # install needed packages
 RUN yum install -y openssh-server python3
@@ -11,6 +20,9 @@ COPY list-authorized-keys /etc/ssh/
 
 # add sleepysh shell
 COPY sleepysh /bin/
+
+# add signkey
+COPY --from=0 /go/src/signkey /bin/
 
 # add sre-user
 RUN useradd sre-user && \
