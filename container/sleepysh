@@ -1,5 +1,15 @@
 #!/bin/sh
 
+if [ -f "${SSH_USER_AUTH}" ]; then
+    AUTH_INFO=$(<$SSH_USER_AUTH) && rm "${SSH_USER_AUTH}"
+    # sign the authenticated users's key, if requested
+    if [[ "$@" == "-c signkey" ]] && [[ "${AUTH_INFO}" == "publickey "* ]]; then
+        ID_KEY="${AUTH_INFO/publickey /}"
+        signkey -id-key="${ID_KEY}" -sign-key="${SIGN_KEY}"
+        exit
+    fi
+fi
+
 # handle the case of sshuttle
 if [[ "$@" == *"sys.stdin.read"* ]]; then
     shift
