@@ -44,6 +44,9 @@ var kubeconfig string
 var idKeyArg string
 var signkeyArg string
 
+const userPrefix = "redhat-"
+const groupPrefix = "system:serviceaccounts:openshift-backplane-"
+
 func main() {
 
 	var idKey ssh.PublicKey
@@ -51,8 +54,8 @@ func main() {
 	var key []byte // client key
 	var crt []byte // client cert
 
-	authKeysArg := map[string]string{
-		os.ExpandEnv("${AUTHORIZED_KEYS_DIR}/aos-sre/authorized_keys"): "osd-sre-admins",
+	authKeysGroupsArg := map[string]string{
+		os.ExpandEnv("${AUTHORIZED_KEYS_DIR}/aos-sre/authorized_keys"): "srep",
 	}
 
 	log.SetFlags(log.Lshortfile)
@@ -64,13 +67,13 @@ func main() {
 	flag.StringVar(&signkeyArg, "sign-key", "",
 		"Optional public key to sign (PEM format in base64). If not specified, a new keypair is generated.")
 /*
-	flag.Var(kflag.NewMapStringString(&authKeysArg), "auth-keys-file",
+	flag.Var(kflag.NewMapStringString(&authKeysGroupsArg), "auth-keys-file",
 		"List of authorized_keys file and user group (eg: --auth-key-file /run/authorized_keys=osd-sre-admins")
 */
 	flag.Parse()
 
 	authorizedKeys := map[sshfp]string{}
-	for authkeys, usergroup := range authKeysArg {
+	for authkeys, usergroup := range authKeysGroupsArg {
 		for _, fingerprint := range parseAuthorizedKeysFile(authkeys) {
 			authorizedKeys[fingerprint] = usergroup
 		}
@@ -182,14 +185,14 @@ func verifyRequest(idkey ssh.PublicKey, signkey *crypto.PublicKey) error {
 // generates a 24-hour certificate with the id key fingerprint and usergroup in its DN
 func (s *certSigner) Sign(id sshfp, signKey crypto.PublicKey, usergroup string) ([]byte, error) {
 
-	username := "redhat-" + usergroup + "-" + base58.Encode(id[:12])
+	username := userPrefix + usergroup + "-" + base58.Encode(id[:12])
 	b64fp := base64.RawStdEncoding.EncodeToString(id[:])
 
 	template := &x509.Certificate{
 		Subject: pkix.Name{
 			CommonName: username,
 			Organization: []string{
-				usergroup,
+				groupPrefix + usergroup,
 				"ssh:sha256:" + b64fp, // ensures full id key fingerprint ends up in audit logs
 				"system:authenticated:ssh",
 			},

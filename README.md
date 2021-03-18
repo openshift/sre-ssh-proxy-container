@@ -54,13 +54,10 @@ To prevent unauthorized certificate generation via `oc exec` or similar, an agen
 
 #### ELEVATION
 
-Group membership cannot be changed when using x509 auth, so to temporarily elevate SRE must patch the osd-sre-cluster-admins clusterrolebinding instead:
+Group membership cannot be changed when using x509 auth, so use impersonation to temporarily elevate:
 
 ```
-oc patch clusterrolebindings/osd-sre-cluster-admins --type='json' \
-  -p='[{"op":"add","path":"/subjects/-","value":{"apiGroup":"rbac.authorization.k8s.io","kind":"User","name":"'$(oc whoami)'"}}]'
+oc --as backplane-cluster-admin ...
 ```
-
-This requires you already have `bind` and `escalate` privileges on clusterroles.
 
 <sup><a name="footnote1">1</a> **TODO:** Consider making the port number and user name configurable through additional environment variables.</sup>
