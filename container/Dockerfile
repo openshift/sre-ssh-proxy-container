@@ -1,5 +1,8 @@
 FROM quay.io/centos/centos:8
 
+# update all packages
+RUN yum -y upgrade
+
 # install needed packages
 RUN yum install -y openssh-server python3
 
