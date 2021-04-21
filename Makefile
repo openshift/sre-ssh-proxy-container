@@ -6,6 +6,10 @@ include standard.mk
 
 # Extend Makefile after here
 
+.PHONY: build-push
+build-push:
+	hack/app_sre_build_push.sh $(IMAGE_URI_VERSION)
+
 .PHONY: local
 local:
 	if [[ ! -e fake_ssh_host_rsa_key ]]; then ssh-keygen -q -t rsa -f fake_ssh_host_rsa_key -C '' -N '' >&/dev/null; fi
