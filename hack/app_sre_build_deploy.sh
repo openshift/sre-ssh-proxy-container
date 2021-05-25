@@ -4,4 +4,5 @@ set -ex
 
 cd $(dirname $0)/..
 
-make IMAGE_REPOSITORY=${IMAGE_REPOSITORY:-app-sre} build skopeo-push
+# TODO: Invoke this make target directly from appsre ci-int and scrap this file
+make build-push
